@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tradezilla Professional Dashboard</title>
+    
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Load PapaParse for CSV parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    
+    <!-- Load Chart.js for data visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    
+    <!-- Load Chart.js date adapter -->
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    
+    <!-- Load Lucide icons -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="bg-slate-900 text-slate-200">
+
+    <div class="max-w-[1600px] mx-auto p-4 md:p-8">
+        <!-- Header Section -->
+        <header class="flex flex-col md:flex-row justify-between items-center mb-8 pb-6 border-b border-slate-700/50">
+            <div class="flex items-center space-x-3 mb-4 md:mb-0">
+                <div class="icon-glow">
+                    <i data-lucide="trending-up" class="text-cyan-400" style="width: 40px; height: 40px;"></i>
+                </div>
+                <div>
+                    <h1 class="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">Tradezilla</h1>
+                    <p class="text-sm text-slate-400">Professional Trading Analytics</p>
+                </div>
+            </div>
+            
+            <!-- Action Buttons -->
+            <div class="flex flex-col md:flex-row gap-3 w-full md:w-auto">
+                <!-- File Upload Input -->
+                <div class="file-input-wrapper">
+                    <input type="file" id="csvFileInput" accept=".csv" class="file-input">
+                    <label for="csvFileInput" class="file-input-label">
+                        <i data-lucide="upload" class="inline-block" style="width: 16px; height: 16px; margin-right: 8px; margin-top: -2px;"></i>
+                        Upload CSV
+                    </label>
+                    <span id="fileName" class="file-input-info">No file selected</span>
+                </div>
+                
+                <!-- Add Trade Button -->
+                <button id="addTradeBtn" class="btn-primary">
+                    <i data-lucide="plus" class="inline-block" style="width: 16px; height: 16px; margin-right: 8px; margin-top: -2px;"></i>
+                    Add Trade
+                </button>
+                
+                <!-- Export Button -->
+                <button id="exportBtn" class="btn-secondary" style="display: none;">
+                    <i data-lucide="download" class="inline-block" style="width: 16px; height: 16px; margin-right: 8px; margin-top: -2px;"></i>
+                    Export
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Dashboard Content -->
+        <main id="dashboard-content">
+            
+            <!-- KPI Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+               <div class="kpi-card">
+                   <div class="kpi-icon-wrapper" style="background: rgba(34, 197, 94, 0.1);">
+                       <i data-lucide="dollar-sign" class="text-green-400" style="width: 24px; height: 24px;"></i>
+                   </div>
+                   <h3 class="metric-label">Total P&L</h3>
+                   <p class="metric-value pnl-neutral" id="kpi-total-pnl">$0.00</p>
+                   <div class="metric-change" id="pnl-change">--</div>
+               </div>
+
+               <div class="kpi-card">
+                   <div class="kpi-icon-wrapper" style="background: rgba(14, 165, 233, 0.1);">
+                       <i data-lucide="target" class="text-cyan-400" style="width: 24px; height: 24px;"></i>
+                   </div>
+                   <h3 class="metric-label">Win Rate</h3>
+                   <p class="metric-value" id="kpi-win-rate">0.0%</p>
+                   <div class="metric-subtitle" id="win-loss-ratio">0 W / 0 L</div>
+               </div>
+
+               <div class="kpi-card">
+                   <div class="kpi-icon-wrapper" style="background: rgba(168, 85, 247, 0.1);">
+                       <i data-lucide="trending-up" class="text-purple-400" style="width: 24px; height: 24px;"></i>
+                   </div>
+                   <h3 class="metric-label">Profit Factor</h3>
+                   <p class="metric-value" id="kpi-profit-factor">0.00</p>
+                   <div class="metric-subtitle">Risk/Reward Ratio</div>
+               </div>
+
+               <div class="kpi-card">
+                   <div class="kpi-icon-wrapper" style="background: rgba(249, 115, 22, 0.1);">
+                       <i data-lucide="bar-chart-2" class="text-orange-400" style="width: 24px; height: 24px;"></i>
+                   </div>
+                   <h3 class="metric-label">Total Trades</h3>
+                   <p class="metric-value" id="kpi-total-trades">0</p>
+                   <div class="metric-subtitle" id="avg-trade">Avg: $0.00</div>
+               </div>
+            </div>
+
+            <!-- Charts Row -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                <!-- P&L Chart -->
+                <div class="card-bg p-6 rounded-xl shadow-2xl lg:col-span-2">
+                    <div class="flex items-center justify-between mb-6">
+                        <h2 class="text-xl font-semibold text-white flex items-center gap-2">
+                            <i data-lucide="line-chart" style="width: 20px; height: 20px;"></i>
+                            Cumulative P&L
+                        </h2>
+                        <div class="flex gap-2">
+                            <button class="chart-toggle-btn active" data-chart="cumulative">Cumulative</button>
+                            <button class="chart-toggle-btn" data-chart="daily">Daily</button>
+                        </div>
+                    </div>
+                    <div style="height: 350px;">
+                        <canvas id="pnlChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Win/Loss Distribution -->
+                <div class="card-bg p-6 rounded-xl shadow-2xl">
+                    <h2 class="text-xl font-semibold mb-6 text-white flex items-center gap-2">
+                        <i data-lucide="pie-chart" style="width: 20px; height: 20px;"></i>
+                        Win/Loss Distribution
+                    </h2>
+                    <div style="height: 300px;" class="flex items-center justify-center">
+                        <canvas id="winLossChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Additional Analytics Row -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+                <!-- Trading Performance by Symbol -->
+                <div class="card-bg p-6 rounded-xl shadow-2xl">
+                    <h2 class="text-xl font-semibold mb-6 text-white flex items-center gap-2">
+                        <i data-lucide="layers" style="width: 20px; height: 20px;"></i>
+                        Top Symbols by P&L
+                    </h2>
+                    <div id="symbolPerformance" class="space-y-3">
+                        <p class="text-center text-slate-500 py-8">No data available</p>
+                    </div>
+                </div>
+
+                <!-- Daily Statistics -->
+                <div class="card-bg p-6 rounded-xl shadow-2xl">
+                    <h2 class="text-xl font-semibold mb-6 text-white flex items-center gap-2">
+                        <i data-lucide="calendar" style="width: 20px; height: 20px;"></i>
+                        Performance by Day
+                    </h2>
+                    <div style="height: 250px;">
+                        <canvas id="dayChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Trade Journal Section -->
+            <div class="card-bg p-6 rounded-xl shadow-2xl">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                    <h2 class="text-xl font-semibold text-white flex items-center gap-2">
+                        <i data-lucide="book-open" style="width: 20px; height: 20px;"></i>
+                        Trade Journal
+                    </h2>
+                    <div class="flex gap-2">
+                        <button id="clearAllBtn" class="btn-danger-small">
+                            <i data-lucide="trash-2" class="inline-block" style="width: 14px; height: 14px;"></i>
+                            Clear All
+                        </button>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-slate-700">
+                        <thead class="bg-slate-800/50">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Date</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Symbol</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Side</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Qty</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Entry</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Exit</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">P&L</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">R:R</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Notes</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-700/50" id="trade-log-body">
+                            <tr>
+                                <td colspan="10" class="p-8 text-center text-slate-500" id="trade-log-placeholder">
+                                    <div class="flex flex-col items-center gap-4">
+                                        <i data-lucide="inbox" style="width: 48px; height: 48px;" class="text-slate-600"></i>
+                                        <p>Upload a CSV file or add trades manually to get started.</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Add Trade Modal -->
+    <div id="addTradeModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="text-2xl font-bold text-white">Add New Trade</h2>
+                <button id="closeModal" class="text-slate-400 hover:text-white transition-colors">
+                    <i data-lucide="x" style="width: 24px; height: 24px;"></i>
+                </button>
+            </div>
+            
+            <form id="addTradeForm" class="modal-body">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="tradeDate">Date *</label>
+                        <input type="date" id="tradeDate" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="tradeSymbol">Symbol *</label>
+                        <input type="text" id="tradeSymbol" placeholder="AAPL, XAUUSD" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="tradeSide">Side *</label>
+                        <select id="tradeSide" required>
+                            <option value="">Select...</option>
+                            <option value="Long">Long (Buy)</option>
+                            <option value="Short">Short (Sell)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="tradeQuantity">Quantity *</label>
+                        <input type="number" id="tradeQuantity" placeholder="100" min="0.01" step="0.01" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="tradeEntry">Entry Price *</label>
+                        <input type="number" id="tradeEntry" placeholder="150.00" step="0.00001" min="0" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="tradeExit">Exit Price *</label>
+                        <input type="number" id="tradeExit" placeholder="155.00" step="0.00001" min="0" required>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="tradeNotes">Notes (Optional)</label>
+                    <textarea id="tradeNotes" rows="3" placeholder="Trade setup, emotions, lessons learned..."></textarea>
+                </div>
+                
+                <div class="calculated-pnl-box">
+                    <div class="flex justify-between items-center">
+                        <span class="text-slate-400">Calculated P&L:</span>
+                        <span class="text-3xl font-bold" id="calculatedPnl">$0.00</span>
+                    </div>
+                </div>
+                
+                <div class="modal-footer">
+                    <button type="button" id="cancelBtn" class="btn-secondary">Cancel</button>
+                    <button type="submit" class="btn-primary">
+                        <i data-lucide="check" class="inline-block" style="width: 16px; height: 16px; margin-right: 8px; margin-top: -2px;"></i>
+                        Add Trade
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Custom JavaScript -->
+    <script src="script.js"></script>
+</body>
+</html>
