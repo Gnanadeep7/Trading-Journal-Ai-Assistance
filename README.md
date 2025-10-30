@@ -1,0 +1,1 @@
+# Trading-Journal-Ai-Assistance
